@@ -1,0 +1,20 @@
+{
+  "name": "pergunta-secreta-multiplayer",
+  "version": "2.0.0",
+  "private": true,
+  "description": "Jogo de perguntas com salas compartilhadas, ordem circular e servidor em tempo real",
+  "scripts": {
+    "start": "node server.js",
+    "test": "node --test tests/*.test.js"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "express": "^4.21.2",
+    "socket.io": "^4.8.1"
+  },
+  "devDependencies": {
+    "socket.io-client": "^4.8.1"
+  }
+}

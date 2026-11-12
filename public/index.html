@@ -1,0 +1,136 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#101526">
+  <title>Pergunta Secreta | Multiplayer</title>
+  <style>
+    :root{color-scheme:dark;--bg:#101526;--panel:#1b2338;--panel2:#252f49;--ink:#f4f7ff;--muted:#aab7d2;--line:#3b4866;--mint:#96f5d3;--purple:#b6a9ff;--warning:#ffd58f;--error:#ffb4c2}
+    *{box-sizing:border-box} [hidden]{display:none!important}
+    body{margin:0;min-height:100vh;background:radial-gradient(ellipse 60% 50% at 85% -10%,#3e326f80,transparent),radial-gradient(ellipse 70% 55% at -10% 115%,#13564d55,transparent),var(--bg);color:var(--ink);font-family:Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;line-height:1.5}
+    button,input,textarea,select{font:inherit} button{cursor:pointer} button:disabled{opacity:.45;cursor:not-allowed}
+    button:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-visible{outline:3px solid var(--mint);outline-offset:3px}
+    .shell{max-width:1160px;margin:0 auto;padding:28px 24px 54px}
+    header{display:flex;justify-content:space-between;gap:12px;align-items:center;margin-bottom:46px}
+    .brand{display:flex;align-items:center;gap:12px;font-size:17px;font-weight:900;letter-spacing:-.04em}
+    .mark{width:46px;height:46px;background:linear-gradient(135deg,var(--purple),var(--mint));display:grid;place-items:center;border-radius:14px;color:#19263a;font-size:30px;font-weight:900;box-shadow:0 10px 34px #98f7d12b}
+    .online{border-radius:999px;border:1px solid #536388;background:#242e46;color:#c9d4ed;padding:7px 12px;font-size:12px;font-weight:750}
+    .online.ok{border-color:#4d9c82;color:var(--mint)}.online.bad{border-color:#995d6e;color:var(--error)}
+    .hero{margin-bottom:26px}.eyebrow{margin:0 0 11px;color:var(--mint);font-size:12px;text-transform:uppercase;letter-spacing:.16em;font-weight:850}
+    h1{font-size:clamp(36px,5.8vw,66px);line-height:1.03;letter-spacing:-.065em;margin:0 0 14px;font-weight:900}
+    .grad{background:linear-gradient(105deg,#c2b7ff,#9bfae4);background-clip:text;-webkit-background-clip:text;color:transparent}
+    .lead{color:var(--muted);max-width:700px;margin:0;font-size:16px}.card{border:1px solid var(--line);border-radius:22px;background:linear-gradient(145deg,#202940,#171e32);box-shadow:0 22px 56px #0002}
+    .start-grid{display:grid;grid-template-columns:1fr 1fr;gap:18px}.start-card{padding:29px}
+    h2{letter-spacing:-.045em;font-size:25px;margin:0 0 9px}.sub{font-size:14px;color:var(--muted);margin:0 0 19px}
+    label{display:block;color:#e2e8f9;font-size:13px;font-weight:800;margin:17px 0 8px}
+    input,textarea,select{width:100%;border:1px solid #4a5876;border-radius:12px;background:#11182b;color:var(--ink);padding:13px 14px;outline:none;resize:vertical}
+    input:focus,textarea:focus,select:focus{border-color:var(--mint);box-shadow:0 0 0 3px #8cecc327} input::placeholder,textarea::placeholder{color:#7d89a7}
+    .btn{display:inline-flex;justify-content:center;align-items:center;gap:8px;border:0;border-radius:12px;min-height:45px;padding:10px 17px;font-weight:850;transition:filter .15s,transform .15s}
+    .btn:enabled:hover{filter:brightness(1.08);transform:translateY(-1px)}
+    .primary{color:#122c2b;background:linear-gradient(110deg,var(--mint),#aff5fc)}.secondary{color:#eef2ff;background:#35415e;border:1px solid #576688}.ghost{color:#dce5f7;background:transparent;border:1px solid var(--line)}
+    .full{width:100%;margin-top:22px}.small{font-size:12px;min-height:35px;padding:8px 12px}
+    .tip{border-radius:13px;background:#29354a;border:1px solid #3b4b68;color:#c4d0e5;padding:13px 15px;font-size:12px;margin-top:20px}
+    .error{color:#ffd3df;border:1px solid #a45b71;background:#4a293b;padding:12px 14px;border-radius:12px;margin-top:15px;font-size:13px;overflow-wrap:anywhere}
+    .room-bar{display:flex;align-items:center;justify-content:space-between;gap:15px;padding:17px 20px;margin-bottom:20px;flex-wrap:wrap}
+    .room-id{display:flex;align-items:center;gap:12px;flex-wrap:wrap}.room-code{font-size:23px;font-weight:950;letter-spacing:.09em;color:var(--mint)}.muted{color:var(--muted);font-size:13px}
+    .lobby-grid{display:grid;grid-template-columns:.9fr 1.1fr;gap:18px}.lobby-card{padding:27px}
+    .person-list{display:flex;flex-direction:column;gap:9px;margin-top:17px}
+    .person-row{border-radius:12px;background:#29344d;display:flex;gap:12px;padding:11px 13px;align-items:center}
+    .avatar{width:32px;height:32px;border-radius:10px;background:#55528c;display:grid;place-items:center;color:#fff;font-weight:900;flex:0 0 32px}
+    .person-row .pname{flex:1;font-weight:750;overflow-wrap:anywhere}.pill{font-size:11px;border:1px solid #576583;color:#b8c8df;border-radius:999px;padding:4px 9px}
+    .pill.me{color:var(--mint);border-color:#4e937e}.pill.away{color:var(--warning);border-color:#947e56}
+    .choice{display:flex;gap:10px;align-items:center;background:#26324a;padding:11px 13px;border-radius:12px;margin:10px 0;font-size:13px;font-weight:700;cursor:pointer}
+    .choice input{width:auto;margin:0;accent-color:var(--mint)}
+    .game-grid{display:grid;grid-template-columns:minmax(0,1fr) 302px;gap:18px;align-items:start}.board{padding:27px}
+    .board-head{display:flex;justify-content:space-between;gap:10px;align-items:flex-start;flex-wrap:wrap}
+    .board-head h2{font-size:29px}.count{background:#303c57;border:1px solid #4c5b7e;border-radius:12px;padding:9px 13px;color:#d0dbed;font-size:12px;font-weight:800}
+    .progress{height:8px;margin:18px 0 22px;border-radius:999px;background:#323d57;overflow:hidden}.progress>span{display:block;height:100%;background:linear-gradient(90deg,var(--purple),var(--mint));transition:width .2s}
+    .caption{font-size:14px;color:#bac6dc;margin:0 0 12px}
+    .words{display:grid;grid-template-columns:repeat(auto-fill,minmax(118px,1fr));gap:11px}
+    .word{display:flex;flex-direction:column;justify-content:space-between;align-items:flex-start;min-height:98px;min-width:0;text-align:left;background:#27334e;border:1px solid #526080;border-radius:15px;padding:12px;transition:transform .15s,border-color .15s}
+    .word:enabled:hover{border-color:var(--mint);transform:translateY(-2px)}.word.revealed{background:linear-gradient(145deg,#2e594e,#204c47);border-color:#6da792;opacity:1!important}
+    .word .num{color:#b6bbdb;font-size:12px;font-weight:850}.word .val{color:#f4f8ff;font-size:17px;font-weight:850;overflow-wrap:anywhere;line-height:1.26}
+    .word .lock{font-size:25px;color:#909bb7}.word:disabled:not(.revealed){opacity:.72}
+    .turnbar{display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap;border-top:1px solid var(--line);margin-top:23px;padding-top:20px}
+    .turnbar .turn-title{font-size:11px;text-transform:uppercase;color:var(--muted);font-weight:850;letter-spacing:.11em}.turnbar .turn-person{font-size:23px;letter-spacing:-.04em;font-weight:900}
+    .side{display:flex;flex-direction:column;gap:18px}.side .card{padding:22px}.side h3{margin:0 0 14px;font-size:18px;letter-spacing:-.03em}
+    .whose{border:1px solid #5c8f8b;background:#2a4547;border-radius:12px;padding:13px 14px;margin:0 0 14px}.whose .mini{font-size:11px;letter-spacing:.1em;font-weight:800;text-transform:uppercase;color:#bcdfd4}
+    .whose strong{display:block;font-size:23px;letter-spacing:-.025em}.order{font-size:12px;color:#c4d2e6;overflow-wrap:anywhere}
+    .guessform{display:flex;flex-direction:column;gap:9px}.feedback{font-size:13px;color:var(--warning);margin:12px 0 0}
+    .score{display:flex;align-items:center;gap:10px;padding:11px 0}.score+.score{border-top:1px solid #34415d}.score .name{flex:1;font-size:13px;font-weight:750;min-width:0;overflow-wrap:anywhere}.score .points{font-weight:900;font-size:14px;white-space:nowrap}.score.active .name{color:var(--mint)}
+    .logs{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:8px;max-height:190px;overflow:auto}.logs li{border-left:2px solid #696397;padding-left:10px;color:#b7c3da;font-size:12px}
+    .endbox{margin-top:24px;background:linear-gradient(120deg,#2f5750,#283e58);border:1px solid #669c91;border-radius:16px;padding:22px}.endbox h2{font-size:27px;margin:6px 0}.answer{font-size:22px;color:var(--mint);font-weight:900}
+    .result-actions{display:flex;gap:10px;margin-top:16px;flex-wrap:wrap}
+    .connect-warning{border:1px solid #a47958;background:#4c3d32;color:#ffe1bf;padding:13px 17px;border-radius:13px;margin-bottom:18px}
+    footer{text-align:center;margin-top:35px;color:#8290ab;font-size:12px}
+    @media(max-width:850px){.start-grid,.lobby-grid,.game-grid{grid-template-columns:1fr}.side{display:grid;grid-template-columns:1fr 1fr}.side .history{grid-column:1/-1}}
+    @media(max-width:600px){.shell{padding:20px 14px 32px}header{margin-bottom:31px}.brand{font-size:14px}.online{font-size:10px}.start-card,.lobby-card,.board,.side .card{padding:20px}.side{grid-template-columns:1fr}.side .history{grid-column:auto}.words{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.word{min-height:95px}.room-bar{padding:16px}.room-code{font-size:20px}}
+  </style>
+</head>
+<body>
+<div class="shell">
+  <header><div class="brand"><span class="mark">?</span><span>PERGUNTA SECRETA</span></div><span class="online" id="network-status">Multiplayer ao vivo</span></header>
+
+  <section id="start-view">
+    <div class="hero"><p class="eyebrow">Agora em computadores diferentes</p><h1>Uma sala. <span class="grad">Todo mundo jogando.</span></h1><p class="lead">Crie uma sala, mande o link para os colegas e joguem juntos. Quando alguém revelar uma palavra, ela aparece para todos, na mesma hora.</p></div>
+    <div class="start-grid">
+      <section class="card start-card">
+        <h2>Criar uma sala</h2><p class="sub">Você será o anfitrião e também poderá participar.</p>
+        <form id="create-form"><label for="create-name">Seu nome</label><input id="create-name" maxlength="24" autocomplete="nickname" required placeholder="Ex.: Ana"><button class="btn primary full" type="submit">Criar sala compartilhada</button></form>
+        <div class="tip">A sala fica no servidor. Se o anfitrião sair, outro participante conectado pode assumir a sala.</div>
+      </section>
+      <section class="card start-card">
+        <h2>Entrar em uma sala</h2><p class="sub">Já recebeu um código ou um link? Entre na mesma partida.</p>
+        <form id="join-form"><label for="join-name">Seu nome</label><input id="join-name" maxlength="24" autocomplete="nickname" required placeholder="Ex.: Bruno"><label for="join-code">Código da sala</label><input id="join-code" maxlength="9" autocomplete="off" spellcheck="false" required placeholder="Ex.: K7XP2ZA" style="text-transform:uppercase"><button type="submit" class="btn secondary full">Entrar na sala</button></form>
+      </section>
+    </div>
+    <div class="error" id="start-error" role="alert" hidden></div>
+  </section>
+
+  <div id="room-view" hidden>
+    <div class="card room-bar"><div class="room-id"><span class="muted">Sala</span><span id="room-code-label" class="room-code"></span><span class="pill" id="role-label"></span></div><div style="display:flex;gap:8px;flex-wrap:wrap"><button id="copy-link" class="btn small primary">Copiar link de convite</button><button id="copy-code" class="btn small ghost">Copiar código</button></div></div>
+    <div id="connection-warning" class="connect-warning" hidden></div>
+    <section id="lobby-view">
+      <div class="hero"><p class="eyebrow">Sala de espera</p><h1>Reúna a <span class="grad">galera.</span></h1><p class="lead" id="lobby-lead">Os participantes aparecem aqui assim que entram. Quando estiver tudo certo, o anfitrião começa a rodada.</p></div>
+      <div class="lobby-grid">
+        <section class="card lobby-card"><h2>Participantes</h2><p class="sub">Cada pessoa entra no próprio computador ou celular.</p><div id="lobby-players" class="person-list"></div></section>
+        <section class="card lobby-card" id="host-settings" hidden>
+          <h2>Preparar a pergunta</h2><p class="sub">Escolha uma pergunta surpresa ou cadastre a sua.</p>
+          <label class="choice"><input type="radio" name="question-mode" value="surprise" checked> Pergunta surpresa (ninguém vê a resposta)</label>
+          <label class="choice"><input type="radio" name="question-mode" value="custom"> Escrever minha pergunta</label>
+          <div id="custom-fields" hidden><label for="custom-question">Pergunta secreta</label><textarea rows="3" id="custom-question" maxlength="320" placeholder="Ex.: Qual planeta é conhecido como planeta vermelho?"></textarea><label for="custom-answer">Resposta correta</label><input id="custom-answer" maxlength="180" placeholder="Ex.: Marte"><p class="muted">Para mais de uma resposta válida, separe por |.</p></div>
+          <div id="host-error" class="error" hidden></div>
+          <button id="start-game" class="btn primary full">Começar a rodada</button>
+        </section>
+        <section class="card lobby-card" id="guest-wait" hidden><h2>Aguardando o anfitrião</h2><p class="sub">Você já está na sala. Assim que a rodada começar, a pergunta aparecerá escondida para todo mundo.</p><div class="tip">Se o anfitrião estiver preparando uma pergunta, você não precisa fazer nada agora.</div></section>
+      </div>
+    </section>
+
+    <main id="game-view" hidden>
+      <div class="hero"><p class="eyebrow">A pergunta continua secreta</p><h1>Escolha um <span class="grad">número.</span></h1><p class="lead">Só quem está na vez escolhe a palavra. Depois, todos tentam adivinhar em ordem, começando por quem pediu a dica.</p></div>
+      <div class="game-grid">
+        <section class="card board">
+          <div class="board-head"><div><p class="eyebrow" id="round-label">Rodada 1</p><h2>Palavras escondidas</h2></div><span class="count" id="reveal-count">0 / 0 reveladas</span></div>
+          <div class="progress"><span id="reveal-progress" style="width:0%"></span></div>
+          <p id="board-caption" class="caption">Aguardando quem vai pedir a dica.</p><div class="words" id="word-grid"></div>
+          <div id="turnbar" class="turnbar"><div><div class="turn-title">Quem escolhe a próxima palavra</div><div class="turn-person" id="picker-name">—</div></div><button id="skip-pick" class="btn secondary small" hidden>Passar vez</button></div>
+          <div id="round-result" class="endbox" hidden><p class="eyebrow" id="result-eyebrow">Fim da rodada</p><h2 id="result-title"></h2><p id="question-result"></p><p>Resposta: <span id="answer-result" class="answer"></span></p><div class="result-actions"><button id="next-round" class="btn primary" hidden>Preparar próxima rodada</button><span id="waiting-next" class="muted" hidden>Aguardando o anfitrião preparar a próxima rodada.</span></div></div>
+        </section>
+        <aside class="side">
+          <section class="card" id="guess-panel"><h3>Hora dos palpites</h3><p class="sub" id="guess-caption">Aguardando uma palavra ser revelada.</p>
+            <div class="whose" id="guess-banner" hidden><div class="mini" id="guess-count">Palpite 1 de 3</div><strong id="guesser-name"></strong><div class="order" id="guess-order"></div></div>
+            <form id="guess-form" class="guessform"><input id="guess-input" maxlength="120" placeholder="Qual é a resposta?" autocomplete="off"><button id="guess-submit" class="btn primary" type="submit">Enviar palpite</button><button id="guess-skip" class="btn ghost small" type="button">Pular meu palpite</button></form><p id="feedback" class="feedback" aria-live="polite"></p>
+          </section>
+          <section class="card"><h3>Placar</h3><div id="scoreboard"></div></section>
+          <section class="card history"><h3>Últimas jogadas</h3><ul class="logs" id="event-log"></ul></section>
+        </aside>
+      </div>
+    </main>
+  </div>
+  <footer>Funciona com amigos em computadores diferentes. A sala fica no servidor enquanto ele estiver ativo. Não há necessidade de instalar aplicativos.</footer>
+</div>
+<script src="/socket.io/socket.io.js"></script>
+<script src="/app.js"></script>
+</body>
+</html>
