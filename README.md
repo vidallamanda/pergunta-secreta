@@ -34,6 +34,18 @@ O arquivo `render.yaml` pode ser usado como Blueprint, se preferir.
 - Até 12 participantes por sala.
 - O anfitrião não precisa manter a aba aberta durante o jogo: se ele cair, o servidor pode transferir essa função após alguns segundos para outro participante conectado.
 
+## Controles da sala
+
+- **Sair da sala** (todos): remove o próprio participante imediatamente. Os outros continuam jogando. Se o anfitrião sair, a função é transferida para outra pessoa; se era o único participante, a sala é apagada.
+- **Remover** (somente anfitrião): o botão fica ao lado do nome de cada outro participante, tanto na sala de espera quanto durante a rodada. Quem é removido recebe um aviso e perde o acesso à sessão anterior. A ordem de escolha e dos palpites se adapta aos participantes restantes.
+- **Encerrar sala** (somente anfitrião): encerra a partida para todos, invalida o código e descarta os dados daquela sala. É diferente de sair.
+
+A remoção impede o retorno usando a sessão anterior e o mesmo nome. Como não há contas de usuário, não é uma proibição de identidade infalível: alguém poderia tentar um nome diferente.
+
+### Atualização de um site já publicado no Render
+
+Substitua os arquivos do projeto no **mesmo repositório GitHub** usado pelo serviço Render e faça commit/push. O Render precisa publicar a nova versão para os botões funcionarem; não basta atualizar somente o HTML, pois existem mudanças no servidor (`server.js`). Os participantes que estavam em salas da versão anterior precisarão criar uma nova sala após a atualização, porque as salas ficam em memória.
+
 ## Regras
 
 1. Alguém cria a sala e compartilha o link. Cada um entra com seu nome.

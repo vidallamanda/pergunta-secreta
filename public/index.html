@@ -28,7 +28,7 @@
     input:focus,textarea:focus,select:focus{border-color:var(--mint);box-shadow:0 0 0 3px #8cecc327} input::placeholder,textarea::placeholder{color:#7d89a7}
     .btn{display:inline-flex;justify-content:center;align-items:center;gap:8px;border:0;border-radius:12px;min-height:45px;padding:10px 17px;font-weight:850;transition:filter .15s,transform .15s}
     .btn:enabled:hover{filter:brightness(1.08);transform:translateY(-1px)}
-    .primary{color:#122c2b;background:linear-gradient(110deg,var(--mint),#aff5fc)}.secondary{color:#eef2ff;background:#35415e;border:1px solid #576688}.ghost{color:#dce5f7;background:transparent;border:1px solid var(--line)}
+    .danger{color:#ffdce6;background:#542d40;border:1px solid #af617d}.danger:hover{background:#68334b}.primary{color:#122c2b;background:linear-gradient(110deg,var(--mint),#aff5fc)}.secondary{color:#eef2ff;background:#35415e;border:1px solid #576688}.ghost{color:#dce5f7;background:transparent;border:1px solid var(--line)}
     .full{width:100%;margin-top:22px}.small{font-size:12px;min-height:35px;padding:8px 12px}
     .tip{border-radius:13px;background:#29354a;border:1px solid #3b4b68;color:#c4d0e5;padding:13px 15px;font-size:12px;margin-top:20px}
     .error{color:#ffd3df;border:1px solid #a45b71;background:#4a293b;padding:12px 14px;border-radius:12px;margin-top:15px;font-size:13px;overflow-wrap:anywhere}
@@ -39,7 +39,7 @@
     .person-row{border-radius:12px;background:#29344d;display:flex;gap:12px;padding:11px 13px;align-items:center}
     .avatar{width:32px;height:32px;border-radius:10px;background:#55528c;display:grid;place-items:center;color:#fff;font-weight:900;flex:0 0 32px}
     .person-row .pname{flex:1;font-weight:750;overflow-wrap:anywhere}.pill{font-size:11px;border:1px solid #576583;color:#b8c8df;border-radius:999px;padding:4px 9px}
-    .pill.me{color:var(--mint);border-color:#4e937e}.pill.away{color:var(--warning);border-color:#947e56}
+    .kick{flex-shrink:0;font-size:11px;min-height:31px;padding:6px 9px}.pill.me{color:var(--mint);border-color:#4e937e}.pill.away{color:var(--warning);border-color:#947e56}
     .choice{display:flex;gap:10px;align-items:center;background:#26324a;padding:11px 13px;border-radius:12px;margin:10px 0;font-size:13px;font-weight:700;cursor:pointer}
     .choice input{width:auto;margin:0;accent-color:var(--mint)}
     .game-grid{display:grid;grid-template-columns:minmax(0,1fr) 302px;gap:18px;align-items:start}.board{padding:27px}
@@ -89,7 +89,7 @@
   </section>
 
   <div id="room-view" hidden>
-    <div class="card room-bar"><div class="room-id"><span class="muted">Sala</span><span id="room-code-label" class="room-code"></span><span class="pill" id="role-label"></span></div><div style="display:flex;gap:8px;flex-wrap:wrap"><button id="copy-link" class="btn small primary">Copiar link de convite</button><button id="copy-code" class="btn small ghost">Copiar código</button></div></div>
+    <div class="card room-bar"><div class="room-id"><span class="muted">Sala</span><span id="room-code-label" class="room-code"></span><span class="pill" id="role-label"></span></div><div style="display:flex;gap:8px;flex-wrap:wrap"><button id="copy-link" class="btn small primary">Copiar link de convite</button><button id="copy-code" class="btn small ghost">Copiar código</button><button id="leave-room" class="btn small secondary">Sair da sala</button><button id="close-room" class="btn small danger" hidden>Encerrar sala</button></div></div>
     <div id="connection-warning" class="connect-warning" hidden></div>
     <section id="lobby-view">
       <div class="hero"><p class="eyebrow">Sala de espera</p><h1>Reúna a <span class="grad">galera.</span></h1><p class="lead" id="lobby-lead">Os participantes aparecem aqui assim que entram. Quando estiver tudo certo, o anfitrião começa a rodada.</p></div>

@@ -1,6 +1,6 @@
 {
   "name": "pergunta-secreta-multiplayer",
-  "version": "2.0.0",
+  "version": "2.1.0",
   "private": true,
   "description": "Jogo de perguntas com salas compartilhadas, ordem circular e servidor em tempo real",
   "scripts": {

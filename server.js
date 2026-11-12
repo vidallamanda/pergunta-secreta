@@ -100,12 +100,88 @@ function advanceGuess(room) {
 }
 function endRound(room, winnerId) {
   room.phase = 'ended';
-  room.result = { winnerId, question: room.question, answer: room.answer.split('|')[0].trim() };
+  room.result = { winnerId, winnerName: winnerId ? nameOf(room, winnerId) : null, question: room.question, answer: room.answer.split('|')[0].trim() };
   room.guessOrder = [];
   room.guessIndex = 0;
   if (winnerId) addLog(room, `${nameOf(room, winnerId)} acertou e ganhou 1 ponto!`);
   else addLog(room, 'Ninguém acertou a pergunta.');
 }
+function nextConnectedAtOrAfter(room, start) {
+  if (!room.players.length) return 0;
+  for (let n = 0; n < room.players.length; n++) {
+    const index = ((start + n) % room.players.length + room.players.length) % room.players.length;
+    if (room.players[index].connected) return index;
+  }
+  return ((start % room.players.length) + room.players.length) % room.players.length;
+}
+
+// Remove uma pessoa do jogo e reorganiza os turnos, inclusive durante a rodada.
+function removePlayer(room, p, { kicked = false } = {}) {
+  const oldIndex = room.players.findIndex(x => x.id === p.id);
+  if (oldIndex === -1) return;
+  const wasPicker = room.turnIndex === oldIndex;
+  const wasGuessing = room.phase === 'guess' && room.guessOrder[room.guessIndex] === p.id;
+  const guessPosition = room.guessOrder.indexOf(p.id);
+  const sock = p.socketId && io.sockets.sockets.get(p.socketId);
+  if (sock) {
+    if (kicked) sock.emit('removedFromRoom', { code: room.code, message: 'O anfitrião removeu você da sala.' });
+    sock.data.session = null;
+    sock.leave(ROOM_CHANNEL(room.code));
+  }
+  p.connected = false;
+  p.socketId = null;
+  if (kicked) {
+    room.kickedTokens.add(p.token);
+    room.kickedNames.add(normalize(p.name));
+  }
+  room.players.splice(oldIndex, 1);
+  if (guessPosition !== -1) {
+    room.guessOrder.splice(guessPosition, 1);
+    if (guessPosition < room.guessIndex) room.guessIndex--;
+  }
+  if (room.players.length === 0) {
+    clearTimeout(room.hostTimer);
+    rooms.delete(room.code);
+    return;
+  }
+  if (room.phase === 'guess' && wasPicker) {
+    // turnIndex aponta para o predecessor do próximo jogador que pedirá uma dica.
+    room.turnIndex = (oldIndex - 1 + room.players.length) % room.players.length;
+  } else if (wasPicker) {
+    room.turnIndex = nextConnectedAtOrAfter(room, oldIndex % room.players.length);
+  } else if (oldIndex < room.turnIndex) {
+    room.turnIndex--;
+  }
+  if (room.hostId === p.id) {
+    clearTimeout(room.hostTimer);
+    room.hostTimer = null;
+    const replacement = room.players.find(x => x.connected) || room.players[0];
+    room.hostId = replacement.id;
+    addLog(room, `${replacement.name} agora é o anfitrião.`);
+  }
+  if (room.phase === 'pick' && !currentPicker(room)?.connected) {
+    room.turnIndex = nextConnectedAtOrAfter(room, room.turnIndex);
+  }
+  if (room.phase === 'guess' && (wasGuessing || room.guessIndex >= room.guessOrder.length || !connected(room, room.guessOrder[room.guessIndex]))) {
+    // advanceGuess começa avançando uma posição; retrocede para não pular quem vem depois.
+    room.guessIndex--;
+    advanceGuess(room);
+  }
+}
+
+function closeRoom(room) {
+  io.to(ROOM_CHANNEL(room.code)).emit('roomClosed', { code: room.code, message: 'O anfitrião encerrou a sala para todos.' });
+  for (const p of room.players) {
+    const sock = p.socketId && io.sockets.sockets.get(p.socketId);
+    if (sock) {
+      sock.data.session = null;
+      sock.leave(ROOM_CHANNEL(room.code));
+    }
+  }
+  clearTimeout(room.hostTimer);
+  rooms.delete(room.code);
+}
+
 function publicState(room) {
   return {
     phase: room.phase, round: room.round,
@@ -250,7 +326,7 @@ io.on('connection', socket => {
     const p = { id: crypto.randomUUID(), name, score: 0, token: genToken(), connected: false, socketId: null };
     const room = { code, hostId: p.id, players: [p], phase: 'lobby', round: 0, turnIndex: 0, guessOrder: [], guessIndex: 0,
       wordCount: 0, wordTokens: [], question: '', answer: '', revealed: {}, result: null,
-      events: ['Sala criada. Compartilhe o link com seus colegas.'], asked: new Set(), lastActivity: Date.now(), hostTimer: null };
+      events: ['Sala criada. Compartilhe o link com seus colegas.'], asked: new Set(), kickedTokens: new Set(), kickedNames: new Set(), lastActivity: Date.now(), hostTimer: null };
     rooms.set(code, room);
     bindPlayer(socket, room, p);
     ok(ack, { code, playerId: p.id, token: p.token, name: p.name, hostId: room.hostId, state: publicState(room) });
@@ -262,10 +338,12 @@ io.on('connection', socket => {
     const token = shorten(data?.token, 128);
     const room = rooms.get(code);
     if (!room) return fail(ack, 'Sala não encontrada. Confira o código. Se o servidor reiniciou, é necessário criar outra sala.');
+    if (token && room.kickedTokens.has(token)) return fail(ack, 'Você foi removido desta sala pelo anfitrião.');
     let p = token && room.players.find(x => x.token === token);
     if (!p) {
       if (room.phase !== 'lobby') return fail(ack, 'A partida já começou. Só é possível entrar numa nova sala antes de começar a rodada.');
       if (!NAME_PATTERN.test(name)) return fail(ack, 'Informe seu nome.');
+      if (room.kickedNames.has(normalize(name))) return fail(ack, 'Você foi removido desta sala pelo anfitrião.');
       if (room.players.length >= MAX_PLAYERS) return fail(ack, 'A sala está cheia (máximo de 12 participantes).');
       if (room.players.some(x => normalize(x.name) === normalize(name))) return fail(ack, 'Esse nome já está em uso. Escolha outro.');
       p = { id: crypto.randomUUID(), name, token: genToken(), score: 0, connected: false, socketId: null };
@@ -283,6 +361,38 @@ io.on('connection', socket => {
     if (message) return fail(ack, message);
     ok(ack, {});
     publish(session.room);
+  });
+  socket.on('leaveRoom', (_, ack) => {
+    const session = getSession(socket);
+    if (!session) return fail(ack, 'Você não está em uma sala.');
+    const { room, p } = session;
+    removePlayer(room, p);
+    if (rooms.has(room.code)) {
+      addLog(room, `${p.name} saiu da sala.`);
+      publish(room);
+    }
+    ok(ack, {});
+  });
+  socket.on('kickPlayer', (data, ack) => {
+    const session = getSession(socket);
+    if (!session) return fail(ack, 'Você não está em uma sala.');
+    const { room, p } = session;
+    if (room.hostId !== p.id) return fail(ack, 'Somente o anfitrião pode remover participantes.');
+    const target = player(room, data?.playerId);
+    if (!target) return fail(ack, 'Participante não encontrado.');
+    if (target.id === p.id) return fail(ack, 'Use Sair da sala para sair.');
+    removePlayer(room, target, { kicked: true });
+    addLog(room, `${target.name} foi removido pelo anfitrião.`);
+    publish(room);
+    ok(ack, {});
+  });
+  socket.on('closeRoom', (_, ack) => {
+    const session = getSession(socket);
+    if (!session) return fail(ack, 'Você não está em uma sala.');
+    const { room, p } = session;
+    if (room.hostId !== p.id) return fail(ack, 'Somente o anfitrião pode encerrar a sala.');
+    closeRoom(room);
+    ok(ack, {});
   });
   socket.on('disconnect', () => releaseCurrentSocket(socket));
 });

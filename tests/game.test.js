@@ -105,3 +105,97 @@ test('reconexão com token preserva o participante e os pontos', async () => {
   assert.equal(room.players.length, 1);
   assert.equal(room.players[0].connected, true);
 });
+
+test('anfitrião remove jogador no meio dos palpites, sem pular o próximo', async () => {
+  const ana = await connect();
+  const bruno = await connect();
+  const carla = await connect();
+  const a = await send(ana, 'createRoom', { name: 'Ana' });
+  const b = await send(bruno, 'joinRoom', { code: a.code, name: 'Bruno' });
+  const c = await send(carla, 'joinRoom', { code: a.code, name: 'Carla' });
+  const room = rooms.get(a.code);
+  assert.equal((await send(ana, 'action', { action: 'start', mode: 'custom', question: 'Qual é a cor do céu?', answer: 'Azul' })).ok, true);
+  assert.equal((await send(ana, 'action', { action: 'reveal', index: 1 })).ok, true);
+  assert.equal((await send(ana, 'action', { action: 'guess', guess: 'Rosa' })).ok, true);
+  assert.equal(room.guessOrder[room.guessIndex], b.playerId);
+  const removed = new Promise(resolve => bruno.once('removedFromRoom', resolve));
+  assert.equal((await send(ana, 'kickPlayer', { playerId: b.playerId })).ok, true);
+  assert.match((await removed).message, /removeu/);
+  assert.deepEqual(room.guessOrder, [a.playerId, c.playerId]);
+  assert.equal(room.guessOrder[room.guessIndex], c.playerId);
+  assert.equal(room.players.length, 2);
+  assert.equal((await send(bruno, 'action', { action: 'guess', guess: 'Azul' })).ok, false);
+  assert.equal((await send(bruno, 'joinRoom', { code: a.code, token: b.token, name: 'Bruno' })).ok, false);
+  assert.equal((await send(carla, 'action', { action: 'guess', guess: 'Azul' })).ok, true);
+  assert.equal(room.phase, 'ended');
+  assert.equal(room.players.find(p => p.id === c.playerId).score, 1);
+});
+
+test('remover o próximo a escolher palavra mantém o turno circular', async () => {
+  const ana = await connect();
+  const bruno = await connect();
+  const carla = await connect();
+  const a = await send(ana, 'createRoom', { name: 'Ana' });
+  const b = await send(bruno, 'joinRoom', { code: a.code, name: 'Bruno' });
+  const c = await send(carla, 'joinRoom', { code: a.code, name: 'Carla' });
+  const room = rooms.get(a.code);
+  assert.equal((await send(ana, 'action', { action: 'start', mode: 'custom', question: 'Qual é a cor do céu?', answer: 'Azul' })).ok, true);
+  assert.equal((await send(ana, 'kickPlayer', { playerId: b.playerId })).ok, true);
+  assert.equal((await send(ana, 'action', { action: 'reveal', index: 0 })).ok, true);
+  assert.deepEqual(room.guessOrder, [a.playerId, c.playerId]);
+  await send(ana, 'action', { action: 'skipGuess' });
+  await send(carla, 'action', { action: 'skipGuess' });
+  assert.equal(room.phase, 'pick');
+  assert.equal(room.players[room.turnIndex].id, c.playerId);
+  assert.equal((await send(carla, 'action', { action: 'reveal', index: 1 })).ok, true);
+  assert.deepEqual(room.guessOrder, [c.playerId, a.playerId]);
+});
+
+test('sair durante os palpites transfere anfitrião e preserva próxima vez', async () => {
+  const ana = await connect();
+  const bruno = await connect();
+  const carla = await connect();
+  const a = await send(ana, 'createRoom', { name: 'Ana' });
+  const b = await send(bruno, 'joinRoom', { code: a.code, name: 'Bruno' });
+  const c = await send(carla, 'joinRoom', { code: a.code, name: 'Carla' });
+  const room = rooms.get(a.code);
+  await send(ana, 'action', { action: 'start', mode: 'custom', question: 'Qual é a cor do céu?', answer: 'Azul' });
+  await send(ana, 'action', { action: 'reveal', index: 1 });
+  assert.equal((await send(ana, 'leaveRoom', {})).ok, true);
+  assert.equal(room.players.length, 2);
+  assert.equal(room.hostId, b.playerId);
+  assert.equal(room.guessOrder[room.guessIndex], b.playerId);
+  assert.equal((await send(ana, 'action', { action: 'guess', guess: 'Azul' })).ok, false);
+  await send(bruno, 'action', { action: 'skipGuess' });
+  await send(carla, 'action', { action: 'skipGuess' });
+  assert.equal(room.phase, 'pick');
+  assert.equal(room.players[room.turnIndex].id, b.playerId);
+  assert.equal((await send(bruno, 'action', { action: 'reveal', index: 2 })).ok, true);
+  assert.deepEqual(room.guessOrder, [b.playerId, c.playerId]);
+});
+
+test('somente anfitrião encerra a sala e código fica inválido', async () => {
+  const ana = await connect();
+  const bruno = await connect();
+  const a = await send(ana, 'createRoom', { name: 'Ana' });
+  await send(bruno, 'joinRoom', { code: a.code, name: 'Bruno' });
+  assert.equal((await send(bruno, 'closeRoom', {})).ok, false);
+  const closed = new Promise(resolve => bruno.once('roomClosed', resolve));
+  assert.equal((await send(ana, 'closeRoom', {})).ok, true);
+  assert.match((await closed).message, /encerrou/);
+  assert.equal(rooms.has(a.code), false);
+  assert.equal((await send(bruno, 'joinRoom', { code: a.code, name: 'Bruno' })).ok, false);
+});
+
+test('sair sozinho encerra sala e convidado não pode remover o anfitrião', async () => {
+  const ana = await connect();
+  const bruno = await connect();
+  const a = await send(ana, 'createRoom', { name: 'Ana' });
+  const b = await send(bruno, 'joinRoom', { code: a.code, name: 'Bruno' });
+  assert.equal((await send(bruno, 'kickPlayer', { playerId: a.playerId })).ok, false);
+  assert.equal((await send(ana, 'kickPlayer', { playerId: a.playerId })).ok, false);
+  assert.equal((await send(bruno, 'leaveRoom', {})).ok, true);
+  assert.equal(rooms.get(a.code).players.length, 1);
+  assert.equal((await send(ana, 'leaveRoom', {})).ok, true);
+  assert.equal(rooms.has(a.code), false);
+});

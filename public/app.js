@@ -40,6 +40,31 @@
     catch { return null; }
   }
   function clearSaved() { session = null; try { sessionStorage.removeItem(savedKey); } catch (_) {} }
+  function backToStart(message) {
+    ready = false;
+    connecting = false;
+    reconnecting = false;
+    state = null;
+    myPlayerId = '';
+    roomCode = '';
+    isHost = false;
+    clearSaved();
+    $('room-view').hidden = true;
+    $('start-view').hidden = false;
+    $('connection-warning').hidden = true;
+    $('feedback').textContent = '';
+    $('join-code').value = '';
+    document.title = 'Pergunta Secreta | Multiplayer';
+    history.replaceState(null, '', location.pathname);
+    online(socket?.connected ? 'Conectado ao servidor' : 'Servidor desconectado', socket?.connected ? 'ok' : 'bad');
+    showError('start-error', message || '');
+  }
+  function roomControl(event, payload = {}) {
+    send(event, payload, error => {
+      if (error) { $('feedback').textContent = error; window.alert(error); }
+      else if (event === 'leaveRoom') backToStart('Você saiu da sala.');
+    });
+  }
 
   function send(event, data, onResult) {
     if (!socket?.connected) {
@@ -104,12 +129,14 @@
   function playerMarkup(p, lobby = false) {
     const active = p.id === state.players[state.turnIndex]?.id;
     const label = p.id === myPlayerId ? 'Você' : !p.connected ? 'Ausente' : p.id === state.hostId ? 'Anfitrião' : 'Online';
-    return `<div class="${lobby ? 'person-row' : 'score' + (active ? ' active' : '')}"><span class="avatar">${escapeHtml(p.name.charAt(0).toUpperCase())}</span><span class="${lobby ? 'pname' : 'name'}">${escapeHtml(p.name)}</span>${lobby ? `<span class="pill ${p.id === myPlayerId ? 'me' : !p.connected ? 'away' : ''}">${label}</span>` : `<span class="points">${p.score} ${p.score === 1 ? 'ponto' : 'pontos'}</span>`}</div>`;
+    const remove = isHost && p.id !== myPlayerId ? `<button type="button" class="btn danger small kick" data-kick="${escapeHtml(p.id)}" data-name="${escapeHtml(p.name)}" title="Remover ${escapeHtml(p.name)} da sala">Remover</button>` : '';
+    return `<div class="${lobby ? 'person-row' : 'score' + (active ? ' active' : '')}"><span class="avatar">${escapeHtml(p.name.charAt(0).toUpperCase())}</span><span class="${lobby ? 'pname' : 'name'}">${escapeHtml(p.name)}</span>${lobby ? `<span class="pill ${p.id === myPlayerId ? 'me' : !p.connected ? 'away' : ''}">${label}</span>${remove}` : `<span class="points">${p.score} ${p.score === 1 ? 'ponto' : 'pontos'}</span>${remove}`}</div>`;
   }
   function render() {
     if (!state) return;
     isHost = state.hostId === myPlayerId;
     $('role-label').textContent = isHost ? 'Anfitrião' : 'Participante';
+    $('close-room').hidden = !isHost;
     $('lobby-view').hidden = state.phase !== 'lobby';
     $('game-view').hidden = state.phase === 'lobby';
     $('host-settings').hidden = !isHost;
@@ -150,7 +177,7 @@
     if (state.phase === 'ended') {
       const result = state.result || {};
       $('result-eyebrow').textContent = result.winnerId ? 'Resposta correta' : 'Fim da rodada';
-      $('result-title').textContent = result.winnerId ? `${state.players.find(p => p.id === result.winnerId)?.name || 'Alguém'} ganhou 1 ponto!` : 'Ninguém acertou desta vez.';
+      $('result-title').textContent = result.winnerId ? `${result.winnerName || state.players.find(p => p.id === result.winnerId)?.name || 'Alguém'} ganhou 1 ponto!` : 'Ninguém acertou desta vez.';
       $('question-result').textContent = result.question || '';
       $('answer-result').textContent = result.answer || '';
       $('next-round').hidden = !isHost;
@@ -200,6 +227,24 @@
     $('copy-link').dataset.original = $('copy-link').textContent;
     $('copy-code').addEventListener('click', () => copy(roomCode, $('copy-code'), 'Código copiado!'));
     $('copy-link').addEventListener('click', () => copy(invitation(), $('copy-link'), 'Link copiado!'));
+    $('leave-room').addEventListener('click', () => {
+      const others = state?.players.filter(p => p.id !== myPlayerId).length || 0;
+      const message = isHost && others ? 'Sair desta sala? Outro participante assumirá como anfitrião.' :
+        isHost ? 'Sair da sala? Como você é a única pessoa, a sala será fechada.' : 'Deseja sair desta sala?';
+      if (window.confirm(message)) roomControl('leaveRoom');
+    });
+    $('close-room').addEventListener('click', () => {
+      if (window.confirm('Encerrar esta sala para todos os participantes? A partida será apagada e o código deixará de funcionar.')) roomControl('closeRoom');
+    });
+    function handleRemoveClick(e) {
+      const target = e.target.closest('[data-kick]');
+      if (!target || !isHost) return;
+      if (window.confirm(`Remover ${target.dataset.name} da sala? O participante perderá o acesso a esta partida.`)) {
+        roomControl('kickPlayer', { playerId: target.dataset.kick });
+      }
+    }
+    $('lobby-players').addEventListener('click', handleRemoveClick);
+    $('scoreboard').addEventListener('click', handleRemoveClick);
     window.addEventListener('beforeunload', e => {
       if (isHost && ready && state?.phase === 'guess') { e.preventDefault(); e.returnValue = ''; }
     });
@@ -237,6 +282,14 @@
     socket.on('connect_error', () => {
       online('Servidor indisponível', 'bad');
       if (!ready && !reconnecting) showError('start-error', 'Não foi possível conectar ao servidor. Se estiver no Render gratuito, ele pode estar iniciando. Tente novamente daqui a pouco.');
+    });
+    socket.on('removedFromRoom', payload => {
+      if (payload?.code && payload.code !== roomCode) return;
+      backToStart(payload?.message || 'Você foi removido da sala pelo anfitrião.');
+    });
+    socket.on('roomClosed', payload => {
+      if (payload?.code && payload.code !== roomCode) return;
+      backToStart(payload?.message || 'A sala foi encerrada.');
     });
     socket.on('sessionReplaced', () => {
       ready = false;
